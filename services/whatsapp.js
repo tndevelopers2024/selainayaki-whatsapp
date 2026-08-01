@@ -2,6 +2,8 @@ const axios = require("axios");
 
 const token = process.env.WHATSAPP_TOKEN;
 const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID || process.env.PHONE_NUMBER_ID;
+const templateName = process.env.WHATSAPP_TEMPLATE_NAME || "test_order_received";
+const templateLanguage = process.env.WHATSAPP_TEMPLATE_LANG || "en_US";
 
 async function sendOrderTemplate(to, customerName, orderNumber, total) {
     await axios.post(
@@ -11,9 +13,9 @@ async function sendOrderTemplate(to, customerName, orderNumber, total) {
             to,
             type: "template",
             template: {
-                name: "order_confirmation",
+                name: templateName,
                 language: {
-                    code: "en"
+                    code: templateLanguage
                 },
                 components: [
                     {
@@ -21,15 +23,11 @@ async function sendOrderTemplate(to, customerName, orderNumber, total) {
                         parameters: [
                             {
                                 type: "text",
-                                text: customerName
+                                text: String(customerName)
                             },
                             {
                                 type: "text",
-                                text: orderNumber
-                            },
-                            {
-                                type: "text",
-                                text: total
+                                text: String(orderNumber)
                             }
                         ]
                     }
