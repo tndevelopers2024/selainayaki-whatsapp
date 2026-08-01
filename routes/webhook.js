@@ -11,18 +11,38 @@ router.post("/orders/create", async (req, res) => {
     try {
         const order = req.body;
         
-        // Validation: Verify if customer and phone exist
-        if (!order || !order.customer || !order.customer.phone) {
-            console.warn("No phone number found in the order data.", order.id);
+        // Extract phone number from all possible Shopify order locations (Shipping, Billing, Customer profile, Order level)
+        let rawPhone = 
+            order?.shipping_address?.phone || 
+            order?.billing_address?.phone || 
+            order?.customer?.phone || 
+            order?.phone || 
+            order?.customer?.default_address?.phone;
+
+        if (!rawPhone) {
+            console.warn("No phone number found in the order data.", order?.id || "");
             return res.status(200).send("No phone number");
         }
 
-        const phone = order.customer.phone.replace("+", "");
+        // Remove all non-numeric characters (spaces, +, hyphens, brackets, etc.)
+        let phone = rawPhone.replace(/\D/g, "");
+
+        // If it's a standard 10-digit mobile number, automatically prepend '91' for India
+        if (phone.length === 10) {
+            phone = `91${phone}`;
+        }
+
+        // Extract customer first name safely across addresses and customer profile
+        const customerName = 
+            order?.customer?.first_name || 
+            order?.shipping_address?.first_name || 
+            order?.billing_address?.first_name || 
+            "Customer";
 
         // 1. Send Order Template
         await sendOrderTemplate(
             phone,
-            order.customer.first_name || "Customer",
+            customerName,
             order.order_number,
             order.total_price
         );
