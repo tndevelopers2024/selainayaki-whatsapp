@@ -1,4 +1,5 @@
 const express = require("express");
+const axios = require("axios");
 const router = express.Router();
 
 const {
@@ -48,6 +49,34 @@ router.post("/orders/create", async (req, res) => {
                 productName += ` (+${order.line_items.length - 1} more)`;
             }
             productImageUrl = firstProduct.image?.src || firstProduct.image_url || null;
+
+            // Why the logo previously appeared: Shopify's standard order creation webhook omits product images from line_items!
+            // Fix: Dynamically fetch the actual product picture directly from Shopify's fast public store API using Product ID or Title!
+            if (!productImageUrl && (firstProduct.product_id || firstProduct.title)) {
+                try {
+                    const shopDomain = req.get("X-Shopify-Shop-Domain") || "selainayaki.com";
+                    let searchUrl = `https://${shopDomain}/search/suggest.json?q=id:${firstProduct.product_id}&resources[type]=product`;
+                    let searchRes = await axios.get(searchUrl);
+                    let foundProducts = searchRes?.data?.resources?.results?.products;
+
+                    // If searching by product ID didn't match, fallback to searching by product title
+                    if (!foundProducts || foundProducts.length === 0) {
+                        searchUrl = `https://${shopDomain}/search/suggest.json?q=${encodeURIComponent(firstProduct.title)}&resources[type]=product`;
+                        searchRes = await axios.get(searchUrl);
+                        foundProducts = searchRes?.data?.resources?.results?.products;
+                    }
+
+                    if (foundProducts && foundProducts.length > 0 && foundProducts[0].image) {
+                        productImageUrl = foundProducts[0].image;
+                        // Handle Shopify CDN protocol-relative URLs (e.g., //cdn.shopify.com/...)
+                        if (productImageUrl.startsWith("//")) {
+                            productImageUrl = `https:${productImageUrl}`;
+                        }
+                    }
+                } catch (imgErr) {
+                    console.error("Could not dynamically fetch product image from Shopify:", imgErr.message);
+                }
+            }
         }
 
         // 1. Send Order Confirmation Template with Image & Full Name
