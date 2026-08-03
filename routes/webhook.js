@@ -32,34 +32,33 @@ router.post("/orders/create", async (req, res) => {
             phone = `91${phone}`;
         }
 
-        // Extract customer first name safely across addresses and customer profile
-        const customerName = 
-            order?.customer?.first_name || 
-            order?.shipping_address?.first_name || 
-            order?.billing_address?.first_name || 
-            "Customer";
+        // Extract customer first and last name safely across addresses and customer profile
+        const firstName = order?.customer?.first_name || order?.shipping_address?.first_name || order?.billing_address?.first_name || "";
+        const lastName = order?.customer?.last_name || order?.shipping_address?.last_name || order?.billing_address?.last_name || "";
+        const fullName = [firstName, lastName].filter(Boolean).join(" ").trim() || "Valued Customer";
 
-        // 1. Send Order Template
-        await sendOrderTemplate(
-            phone,
-            customerName,
-            order.order_number,
-            order.total_price
-        );
+        // Extract product name and image URL from the order line items
+        let productName = "Ordered Items";
+        let productImageUrl = null;
 
-        // 2. Send Product Image (if available)
         if (order.line_items && order.line_items.length > 0) {
             const firstProduct = order.line_items[0];
-            // Shopify image structure checking, sometimes 'image' might not be populated or 'src' might not exist directly under 'image' depending on the exact webhook payload. But based on the provided code, we'll try this structure.
-            const productImageUrl = firstProduct.image ? firstProduct.image.src : null;
-            if (productImageUrl) {
-                await sendProductImage(
-                    phone,
-                    productImageUrl,
-                    firstProduct.title || "Product"
-                );
+            productName = firstProduct.name || firstProduct.title || "Ordered Item";
+            if (order.line_items.length > 1) {
+                productName += ` (+${order.line_items.length - 1} more)`;
             }
+            productImageUrl = firstProduct.image?.src || firstProduct.image_url || null;
         }
+
+        // 1. Send Order Confirmation Template with Image & Full Name
+        await sendOrderTemplate(
+            phone,
+            fullName,
+            order.order_number || order.id || "001",
+            productName,
+            order.total_price || "0.00",
+            productImageUrl
+        );
 
         // 3. Send Tracking Link
         if (order.order_status_url) {

@@ -2,10 +2,14 @@ const axios = require("axios");
 
 const token = process.env.WHATSAPP_TOKEN;
 const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID || process.env.PHONE_NUMBER_ID;
-const templateName = process.env.WHATSAPP_TEMPLATE_NAME || "test_order_received";
+const templateName = process.env.WHATSAPP_TEMPLATE_NAME || "order_confirmation_with_image";
 const templateLanguage = process.env.WHATSAPP_TEMPLATE_LANG || "en_US";
 
-async function sendOrderTemplate(to, customerName, orderNumber, total) {
+async function sendOrderTemplate(to, customerName, orderNumber, productName, total, imageUrl) {
+    // Provide a fallback brand image URL in case the product has no photo attached
+    const defaultImage = "https://selainayaki.com/cdn/shop/files/logo.png";
+    const validImageUrl = imageUrl || defaultImage;
+
     await axios.post(
         `https://graph.facebook.com/v23.0/${phoneId}/messages`,
         {
@@ -19,6 +23,17 @@ async function sendOrderTemplate(to, customerName, orderNumber, total) {
                 },
                 components: [
                     {
+                        type: "header",
+                        parameters: [
+                            {
+                                type: "image",
+                                image: {
+                                    link: validImageUrl
+                                }
+                            }
+                        ]
+                    },
+                    {
                         type: "body",
                         parameters: [
                             {
@@ -28,6 +43,14 @@ async function sendOrderTemplate(to, customerName, orderNumber, total) {
                             {
                                 type: "text",
                                 text: String(orderNumber)
+                            },
+                            {
+                                type: "text",
+                                text: String(productName)
+                            },
+                            {
+                                type: "text",
+                                text: String(total)
                             }
                         ]
                     }

@@ -14,7 +14,14 @@ app.use(express.json());
 // Standalone test endpoint for WhatsApp Cloud API (Postman Testing)
 app.post("/api/whatsapp/order-confirmation", async (req, res) => {
   try {
-    const { phone, customerName, orderId } = req.body;
+    const { 
+      phone, 
+      customerName, 
+      orderId, 
+      productName = "Kanjivaram Silk Saree", 
+      totalAmount = "1499", 
+      imageUrl = "https://selainayaki.com/cdn/shop/files/logo.png" 
+    } = req.body;
 
     if (!phone || !customerName || !orderId) {
       return res.status(400).json({
@@ -28,6 +35,8 @@ app.post("/api/whatsapp/order-confirmation", async (req, res) => {
 
     const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID || process.env.PHONE_NUMBER_ID;
     const apiVersion = process.env.WHATSAPP_API_VERSION || "v23.0";
+    const templateName = process.env.WHATSAPP_TEMPLATE_NAME || "order_confirmation_with_image";
+    const templateLang = process.env.WHATSAPP_TEMPLATE_LANG || "en_US";
 
     const url =
       `https://graph.facebook.com/` +
@@ -40,24 +49,43 @@ app.post("/api/whatsapp/order-confirmation", async (req, res) => {
       type: "template",
 
       template: {
-        name: "test_order_received",
+        name: templateName,
 
         language: {
-          code: "en_US",
+          code: templateLang,
         },
 
         components: [
+          {
+            type: "header",
+            parameters: [
+              {
+                type: "image",
+                image: {
+                  link: imageUrl,
+                },
+              },
+            ],
+          },
           {
             type: "body",
 
             parameters: [
               {
                 type: "text",
-                text: customerName,
+                text: String(customerName),
               },
               {
                 type: "text",
-                text: orderId,
+                text: String(orderId),
+              },
+              {
+                type: "text",
+                text: String(productName),
+              },
+              {
+                type: "text",
+                text: String(totalAmount),
               },
             ],
           },
