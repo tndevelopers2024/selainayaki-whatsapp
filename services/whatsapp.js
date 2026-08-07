@@ -2,7 +2,7 @@ const axios = require("axios");
 
 const token = process.env.WHATSAPP_TOKEN;
 const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID || process.env.PHONE_NUMBER_ID;
-const templateName = process.env.WHATSAPP_TEMPLATE_NAME || "order_confirmation_with_image";
+const templateName = process.env.WHATSAPP_TEMPLATE_NAME || "order_confirmation_with_image_v2";
 const templateLanguage = process.env.WHATSAPP_TEMPLATE_LANG || "en_US";
 
 async function sendOrderTemplate(to, customerName, orderNumber, productName, total, imageUrl) {
@@ -42,11 +42,11 @@ async function sendOrderTemplate(to, customerName, orderNumber, productName, tot
                             },
                             {
                                 type: "text",
-                                text: String(orderNumber)
+                                text: String(productName)
                             },
                             {
                                 type: "text",
-                                text: String(productName)
+                                text: String(orderNumber)
                             },
                             {
                                 type: "text",
@@ -104,8 +104,54 @@ async function sendTracking(to, orderUrl) {
     );
 }
 
+async function sendOrderShippedTemplate(to, customerName, orderNumber, productName, total) {
+    await axios.post(
+        `https://graph.facebook.com/v23.0/${phoneId}/messages`,
+        {
+            messaging_product: "whatsapp",
+            to,
+            type: "template",
+            template: {
+                name: "order_shipped",
+                language: {
+                    code: templateLanguage
+                },
+                components: [
+                    {
+                        type: "body",
+                        parameters: [
+                            {
+                                type: "text",
+                                text: String(customerName)
+                            },
+                            {
+                                type: "text",
+                                text: String(orderNumber)
+                            },
+                            {
+                                type: "text",
+                                text: String(productName)
+                            },
+                            {
+                                type: "text",
+                                text: String(total)
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }
+    );
+}
+
 module.exports = {
     sendOrderTemplate,
+    sendOrderShippedTemplate,
     sendProductImage,
     sendTracking
 };
