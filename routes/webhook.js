@@ -152,12 +152,28 @@ router.post("/orders/fulfilled", async (req, res) => {
         let trackingNumber = "N/A";
         let trackingUrl = "N/A";
 
+        // Check if payload is an order object with fulfillments array
         if (order.fulfillments && order.fulfillments.length > 0) {
-            // Usually the most recent fulfillment has the tracking info
-            const fulfillment = order.fulfillments[0];
-            trackingCompany = fulfillment.tracking_company || trackingCompany;
-            trackingNumber = fulfillment.tracking_number || (fulfillment.tracking_numbers && fulfillment.tracking_numbers[0]) || trackingNumber;
-            trackingUrl = fulfillment.tracking_url || (fulfillment.tracking_urls && fulfillment.tracking_urls[0]) || trackingUrl;
+            // Start from the most recent fulfillment
+            for (let i = order.fulfillments.length - 1; i >= 0; i--) {
+                const f = order.fulfillments[i];
+                if (f.tracking_company || f.tracking_number || (f.tracking_numbers && f.tracking_numbers.length > 0)) {
+                    trackingCompany = f.tracking_company || trackingCompany;
+                    trackingNumber = f.tracking_number || (f.tracking_numbers && f.tracking_numbers[0]) || trackingNumber;
+                    trackingUrl = f.tracking_url || (f.tracking_urls && f.tracking_urls[0]) || trackingUrl;
+                    break;
+                }
+            }
+        } 
+        // Fallback: Check if the payload is actually a fulfillment object directly
+        else if (order.tracking_company || order.tracking_number || (order.tracking_numbers && order.tracking_numbers.length > 0)) {
+            trackingCompany = order.tracking_company || trackingCompany;
+            trackingNumber = order.tracking_number || (order.tracking_numbers && order.tracking_numbers[0]) || trackingNumber;
+            trackingUrl = order.tracking_url || (order.tracking_urls && order.tracking_urls[0]) || trackingUrl;
+        }
+
+        if (!trackingUrl || trackingUrl === "N/A") {
+            trackingUrl = trackingNumber !== "N/A" ? "Check carrier website" : "N/A";
         }
 
         // 2. Send Order Shipped Template with Tracking
