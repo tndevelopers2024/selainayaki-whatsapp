@@ -5,6 +5,7 @@ const router = express.Router();
 const {
     sendOrderTemplate,
     sendOrderShippedTemplate,
+    sendOrderShippedTrackingTemplate,
     sendProductImage,
     sendTracking
 } = require("../services/whatsapp");
@@ -146,13 +147,28 @@ router.post("/orders/fulfilled", async (req, res) => {
             }
         }
 
-        // 2. Send Order Shipped Template
-        await sendOrderShippedTemplate(
+        // Extract Tracking Information
+        let trackingCompany = "Courier";
+        let trackingNumber = "N/A";
+        let trackingUrl = "N/A";
+
+        if (order.fulfillments && order.fulfillments.length > 0) {
+            // Usually the most recent fulfillment has the tracking info
+            const fulfillment = order.fulfillments[0];
+            trackingCompany = fulfillment.tracking_company || trackingCompany;
+            trackingNumber = fulfillment.tracking_number || (fulfillment.tracking_numbers && fulfillment.tracking_numbers[0]) || trackingNumber;
+            trackingUrl = fulfillment.tracking_url || (fulfillment.tracking_urls && fulfillment.tracking_urls[0]) || trackingUrl;
+        }
+
+        // 2. Send Order Shipped Template with Tracking
+        await sendOrderShippedTrackingTemplate(
             phone,
             fullName,
             order.order_number || order.id || "001",
             productName,
-            order.total_price || "0.00"
+            trackingCompany,
+            trackingNumber,
+            trackingUrl
         );
 
         res.sendStatus(200);
