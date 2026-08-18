@@ -1,10 +1,23 @@
 const express = require("express");
 const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
 const router = express.Router();
+
+const trackingCachePath = path.join(__dirname, "../tracking_cache.json");
+let trackingCache = {};
+if (fs.existsSync(trackingCachePath)) {
+    try {
+        trackingCache = JSON.parse(fs.readFileSync(trackingCachePath, "utf8"));
+    } catch (e) {
+        console.error("Error reading tracking cache:", e);
+    }
+}
 
 const {
     sendOrderTemplate,
     sendOrderShippedTemplate,
+    sendOrderShippedTrackingTemplate,
     sendProductImage,
     sendTracking
 } = require("../services/whatsapp");
@@ -158,6 +171,91 @@ router.post("/orders/fulfilled", async (req, res) => {
         res.sendStatus(200);
     } catch (error) {
         console.error("Error processing fulfilled webhook:", error.response ? error.response.data : error.message);
+        res.status(500).send("Internal Server Error");
+    }
+});
+
+router.post("/orders/updated", async (req, res) => {
+    try {
+        const order = req.body;
+
+        // Check if the order has fulfillments
+        if (!order.fulfillments || order.fulfillments.length === 0) {
+            return res.sendStatus(200);
+        }
+
+        // Check if any fulfillment has a tracking number that hasn't been sent yet
+        let trackingToSend = null;
+        let targetFulfillment = null;
+
+        for (const fulfillment of order.fulfillments) {
+            if (fulfillment.tracking_number) {
+                // If we haven't processed this fulfillment ID yet
+                if (!trackingCache[fulfillment.id]) {
+                    trackingToSend = fulfillment.tracking_number;
+                    targetFulfillment = fulfillment;
+                    break;
+                }
+            }
+        }
+
+        if (!trackingToSend) {
+            return res.sendStatus(200);
+        }
+
+        // Extract phone number safely
+        let rawPhone = 
+            order?.shipping_address?.phone || 
+            order?.billing_address?.phone || 
+            order?.customer?.phone || 
+            order?.phone || 
+            order?.customer?.default_address?.phone;
+
+        if (!rawPhone) {
+            console.warn("No phone number found in the order data.", order?.id || "");
+            return res.status(200).send("No phone number");
+        }
+
+        let phone = rawPhone.replace(/\D/g, "");
+        if (phone.length === 10) {
+            phone = `91${phone}`;
+        }
+
+        // Extract customer name
+        const firstName = order?.customer?.first_name || order?.shipping_address?.first_name || order?.billing_address?.first_name || "";
+        const lastName = order?.customer?.last_name || order?.shipping_address?.last_name || order?.billing_address?.last_name || "";
+        const fullName = [firstName, lastName].filter(Boolean).join(" ").trim() || "Valued Customer";
+
+        // Extract product name
+        let productName = "Ordered Items";
+        if (order.line_items && order.line_items.length > 0) {
+            const firstProduct = order.line_items[0];
+            productName = firstProduct.name || firstProduct.title || "Ordered Item";
+            if (order.line_items.length > 1) {
+                productName += ` (+${order.line_items.length - 1} more)`;
+            }
+        }
+
+        // Extract tracking link
+        const trackingLink = targetFulfillment.tracking_url || targetFulfillment.tracking_urls?.[0] || order.order_status_url || "No tracking link available";
+
+        // Send tracking template
+        await sendOrderShippedTrackingTemplate(
+            phone,
+            fullName,
+            order.order_number || order.id || "001",
+            productName,
+            trackingToSend,
+            trackingLink
+        );
+
+        // Mark as sent in cache and save
+        trackingCache[targetFulfillment.id] = true;
+        fs.writeFileSync(trackingCachePath, JSON.stringify(trackingCache, null, 2), "utf8");
+
+        res.sendStatus(200);
+    } catch (error) {
+        console.error("Error processing orders/updated webhook:", error.response ? error.response.data : error.message);
         res.status(500).send("Internal Server Error");
     }
 });

@@ -149,9 +149,59 @@ async function sendOrderShippedTemplate(to, customerName, orderNumber, productNa
     );
 }
 
+async function sendOrderShippedTrackingTemplate(to, customerName, orderNumber, productName, trackingNumber, trackingLink) {
+    await axios.post(
+        `https://graph.facebook.com/v23.0/${phoneId}/messages`,
+        {
+            messaging_product: "whatsapp",
+            to,
+            type: "template",
+            template: {
+                name: "order_shipped_tracking",
+                language: {
+                    code: templateLanguage
+                },
+                components: [
+                    {
+                        type: "body",
+                        parameters: [
+                            {
+                                type: "text",
+                                text: String(customerName)
+                            },
+                            {
+                                type: "text",
+                                text: String(orderNumber)
+                            },
+                            {
+                                type: "text",
+                                text: String(productName)
+                            },
+                            {
+                                type: "text",
+                                text: String(trackingNumber)
+                            },
+                            {
+                                type: "text",
+                                text: String(trackingLink)
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }
+    );
+}
+
 module.exports = {
     sendOrderTemplate,
     sendOrderShippedTemplate,
+    sendOrderShippedTrackingTemplate,
     sendProductImage,
     sendTracking
 };
