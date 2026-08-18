@@ -149,7 +149,7 @@ async function sendOrderShippedTemplate(to, customerName, orderNumber, productNa
     );
 }
 
-async function sendOrderShippedTrackingTemplate(to, customerName, orderNumber, productName, trackingNumber, trackingLink) {
+async function sendOrderShippedTrackingTemplate(to, customerName, orderNumber, productName, carrier, trackingNumber, trackingLink) {
     await axios.post(
         `https://graph.facebook.com/v23.0/${phoneId}/messages`,
         {
@@ -176,6 +176,10 @@ async function sendOrderShippedTrackingTemplate(to, customerName, orderNumber, p
                             {
                                 type: "text",
                                 text: String(productName)
+                            },
+                            {
+                                type: "text",
+                                text: String(carrier)
                             },
                             {
                                 type: "text",

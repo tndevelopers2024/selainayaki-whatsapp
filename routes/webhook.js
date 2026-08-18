@@ -236,8 +236,9 @@ router.post("/orders/updated", async (req, res) => {
             }
         }
 
-        // Extract tracking link
+        // Extract tracking link and carrier
         const trackingLink = targetFulfillment.tracking_url || targetFulfillment.tracking_urls?.[0] || order.order_status_url || "No tracking link available";
+        const carrier = targetFulfillment.tracking_company || "Standard Shipping";
 
         // Send tracking template
         await sendOrderShippedTrackingTemplate(
@@ -245,6 +246,7 @@ router.post("/orders/updated", async (req, res) => {
             fullName,
             order.order_number || order.id || "001",
             productName,
+            carrier,
             trackingToSend,
             trackingLink
         );
