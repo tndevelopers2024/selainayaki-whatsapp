@@ -2,7 +2,7 @@ const axios = require("axios");
 
 const token = process.env.WHATSAPP_TOKEN;
 const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID || process.env.PHONE_NUMBER_ID;
-const templateName = process.env.WHATSAPP_TEMPLATE_NAME || "order_confirmation_with_image_v2";
+const templateName = process.env.WHATSAPP_TEMPLATE_NAME || "order_confirmation_with_image_v3";
 const templateLanguage = process.env.WHATSAPP_TEMPLATE_LANG || "en_US";
 
 async function sendOrderTemplate(to, customerName, orderNumber, productName, total, imageUrl) {
@@ -112,7 +112,7 @@ async function sendOrderShippedTemplate(to, customerName, orderNumber, productNa
             to,
             type: "template",
             template: {
-                name: "order_shipped",
+                name: "order_shipped_v2",
                 language: {
                     code: templateLanguage
                 },
@@ -157,7 +157,7 @@ async function sendOrderShippedTrackingTemplate(to, customerName, orderNumber, p
             to,
             type: "template",
             template: {
-                name: "order_shipped_tracking",
+                name: "order_shipped_tracking_v2",
                 language: {
                     code: templateLanguage
                 },
